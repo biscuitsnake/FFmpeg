@@ -84,9 +84,12 @@ static int write_packet(AVFormatContext *s, AVPacket *pkt)
     AVIOContext *pb[4];
     char filename[1024];
     AVCodecParameters *par = s->streams[pkt->stream_index]->codecpar;
+    AVStream *stream = s->streams[ pkt->stream_index ];
+    AVCodecContext *codec = stream->codec;
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(par->format);
     int i;
     int nb_renames = 0;
+    int64_t ts = av_rescale_q(pkt->pts, stream->time_base, AV_TIME_BASE_Q);
 
     if (!img->is_pipe) {
         if (img->update) {
@@ -101,13 +104,13 @@ static int write_packet(AVFormatContext *s, AVPacket *pkt)
                 return AVERROR(EINVAL);
             }
         } else if (img->frame_pts) {
-            if (av_get_frame_filename2(filename, sizeof(filename), img->path, pkt->pts, AV_FRAME_FILENAME_FLAGS_MULTIPLE) < 0) {
+            if (av_get_frame_filename2(filename, sizeof(filename), img->path, pkt->pts, AV_FRAME_FILENAME_FLAGS_MULTIPLE, ts) < 0) {
                 av_log(s, AV_LOG_ERROR, "Cannot write filename by pts of the frames.");
                 return AVERROR(EINVAL);
             }
         } else if (av_get_frame_filename2(filename, sizeof(filename), img->path,
                                           img->img_number,
-                                          AV_FRAME_FILENAME_FLAGS_MULTIPLE) < 0 &&
+                                          AV_FRAME_FILENAME_FLAGS_MULTIPLE, ts) < 0 &&
                    img->img_number > 1) {
             av_log(s, AV_LOG_ERROR,
                    "Could not get frame filename number %d from pattern '%s'. "
